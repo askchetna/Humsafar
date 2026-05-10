@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Boolean, ForeignKey
+from sqlalchemy import Column, String, Boolean, Float, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 
 from app.database.base import Base
@@ -45,3 +45,15 @@ class DriverProfile(Base):
         "Vehicle",
         back_populates="driver"
     )
+
+    current_lat = Column(Float, nullable=True)
+
+current_lng = Column(Float, nullable=True)
+
+is_online = Column(
+    Boolean,
+    default=False
+
+)
+is_approved = Column(Boolean, default=True)
+last_seen = Column(DateTime, nullable=True)

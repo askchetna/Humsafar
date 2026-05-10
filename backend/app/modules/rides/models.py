@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, ForeignKey
+from sqlalchemy import Float, Column, String, ForeignKey
 
 from app.database.base import Base
 
@@ -29,3 +29,7 @@ class Ride(Base):
     )
 
     fare = Column(String, default="0")
+
+    pickup_lat = Column(Float, nullable=True)
+
+pickup_lng = Column(Float, nullable=True)

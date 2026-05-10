@@ -6,6 +6,8 @@ from sqlalchemy.orm import Session
 from app.dependencies.database import get_db
 from app.dependencies.auth import get_current_user
 
+from app.modules.drivers.schemas import DriverOnlineSchema
+from app.modules.drivers.service import go_online, go_offline
 from app.modules.auth.models import User
 from app.modules.drivers.models import DriverProfile
 from app.modules.drivers.schemas import (
@@ -76,4 +78,47 @@ def get_driver_profile(
         "license_number": profile.license_number,
         "vehicle_type": profile.vehicle_type,
         "is_online": profile.is_online
+    }
+
+@router.post("/go-online/{driver_id}")
+def driver_online(
+    driver_id: str,
+    payload: DriverOnlineSchema,
+    db: Session = Depends(get_db)
+):
+
+    driver = go_online(
+        db,
+        driver_id,
+        payload.lat,
+        payload.lng
+    )
+
+    if not driver:
+        raise HTTPException(
+            status_code=404,
+            detail="Driver not found"
+        )
+
+    return {
+        "message": "Driver online"
+    }
+
+
+@router.post("/go-offline/{driver_id}")
+def driver_offline(
+    driver_id: str,
+    db: Session = Depends(get_db)
+):
+
+    driver = go_offline(db, driver_id)
+
+    if not driver:
+        raise HTTPException(
+            status_code=404,
+            detail="Driver not found"
+        )
+
+    return {
+        "message": "Driver offline"
     }
