@@ -1,18 +1,19 @@
-from sqlalchemy import Float, Column, String, ForeignKey
+from sqlalchemy import Column, String, Float
 
 from app.database.base import Base
 
 
 class Ride(Base):
+
     __tablename__ = "rides"
 
-    id = Column(String, primary_key=True, index=True)
-
-    rider_id = Column(
+    id = Column(
         String,
-        ForeignKey("users.id"),
-        nullable=False
+        primary_key=True,
+        index=True
     )
+
+    rider_id = Column(String)
 
     driver_id = Column(
         String,
@@ -23,13 +24,17 @@ class Ride(Base):
 
     drop_location = Column(String)
 
-    status = Column(
-        String,
-        default="searching"
+    # GPS COORDINATES
+    pickup_lat = Column(
+        Float,
+        nullable=True
     )
 
-    fare = Column(String, default="0")
+    pickup_lng = Column(
+        Float,
+        nullable=True
+    )
 
-    pickup_lat = Column(Float, nullable=True)
+    status = Column(String)
 
-pickup_lng = Column(Float, nullable=True)
+    fare = Column(String)

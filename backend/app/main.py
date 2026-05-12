@@ -7,7 +7,13 @@ from app.modules.auth.router import router as auth_router
 from app.modules.drivers.router import router as driver_router
 from app.modules.vehicles.router import router as vehicle_router
 from app.modules.rides.router import router as ride_router
+from app.websocket.driver_socket import (
+    router as driver_socket_router
+)
 
+from app.websocket.ride_socket import (
+    router as ride_socket_router
+)
 # IMPORTANT MODEL IMPORTS
 from app.modules.auth.models import User
 from app.modules.drivers.models import DriverProfile
@@ -44,6 +50,10 @@ app.include_router(
     prefix="/api/v1/rides",
     tags=["Rides"]
 )
+
+app.include_router(driver_socket_router)
+
+app.include_router(ride_socket_router)
 @app.get("/")
 def root():
     return {

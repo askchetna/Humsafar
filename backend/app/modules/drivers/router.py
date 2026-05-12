@@ -7,6 +7,7 @@ from app.dependencies.database import get_db
 from app.dependencies.auth import get_current_user
 
 from app.modules.drivers.schemas import DriverOnlineSchema
+from app.modules.drivers.schemas import (UpdateLocationSchema)
 from app.modules.drivers.service import go_online, go_offline
 from app.modules.auth.models import User
 from app.modules.drivers.models import DriverProfile
@@ -121,4 +122,38 @@ def driver_offline(
 
     return {
         "message": "Driver offline"
+    }
+
+@router.post("/update-location")
+def update_location(
+    data: UpdateLocationSchema,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+
+    driver = db.query(
+        DriverProfile
+    ).filter(
+        DriverProfile.user_id ==
+        current_user["user_id"]
+    ).first()
+
+    if not driver:
+        raise HTTPException(
+            status_code=404,
+            detail="Driver profile not found"
+        )
+
+    driver.current_lat = data.lat
+
+    driver.current_lng = data.lng
+
+    db.commit()
+
+    db.refresh(driver)
+
+    return {
+        "message": "Location updated",
+        "lat": driver.current_lat,
+        "lng": driver.current_lng
     }

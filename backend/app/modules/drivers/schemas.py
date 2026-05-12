@@ -8,3 +8,9 @@ class CreateDriverProfileSchema(BaseModel):
     vehicle_type: str
     vehicle_number: str
     license_number: str
+
+class UpdateLocationSchema(BaseModel):
+
+    lat: float
+
+    lng: float

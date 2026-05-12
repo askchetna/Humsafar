@@ -48,7 +48,7 @@ class DriverProfile(Base):
 
     current_lat = Column(Float, nullable=True)
 
-current_lng = Column(Float, nullable=True)
+    current_lng = Column(Float, nullable=True)
 
 is_online = Column(
     Boolean,
