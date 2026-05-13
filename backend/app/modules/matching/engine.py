@@ -1,21 +1,29 @@
-from app.modules.matching.geo_search import get_nearby_drivers
+from app.modules.matching.geo_search import (
+    get_nearby_drivers
+)
 
 from app.modules.matching.scoring import (
     calculate_driver_score
 )
 
-from app.utils.distance import calculate_distance
+from app.utils.distance import (
+    calculate_distance
+)
 
 
 def find_best_driver(
     db,
     pickup_lat,
-    pickup_lng
+    pickup_lng,
+    excluded_drivers=None
 ):
 
     drivers = get_nearby_drivers(db)
 
-    print("AVAILABLE DRIVERS:", drivers)
+    print(
+        "AVAILABLE DRIVERS:",
+        drivers
+    )
 
     best_driver = None
 
@@ -23,41 +31,80 @@ def find_best_driver(
 
     for driver in drivers:
 
-        print("CHECKING DRIVER:", driver.id)
+        print(
+            "CHECKING DRIVER:",
+            driver.id
+        )
 
-        print("LAT:", driver.current_lat)
+        # SKIP EXCLUDED DRIVERS
+        if excluded_drivers:
 
-        print("LNG:", driver.current_lng)
+            if str(driver.id) in excluded_drivers:
+
+                print(
+                    "SKIPPING DRIVER"
+                )
+
+                continue
+
+        print(
+            "LAT:",
+            driver.current_lat
+        )
+
+        print(
+            "LNG:",
+            driver.current_lng
+        )
 
         # SKIP INVALID LOCATIONS
         if (
             driver.current_lat is None
             or driver.current_lng is None
         ):
-            print("SKIPPED DRIVER")
+
+            print(
+                "SKIPPED DRIVER"
+            )
+
             continue
 
         distance = calculate_distance(
+
             pickup_lat,
             pickup_lng,
+
             float(driver.current_lat),
             float(driver.current_lng)
         )
 
-        print("DISTANCE:", distance)
+        print(
+            "DISTANCE:",
+            distance
+        )
 
-        score = calculate_driver_score(distance)
+        score = calculate_driver_score(
+            distance
+        )
 
-        print("SCORE:", score)
+        print(
+            "SCORE:",
+            score
+        )
 
         if score > best_score:
 
-            print("NEW BEST DRIVER FOUND")
+            print(
+                "NEW BEST DRIVER FOUND"
+            )
 
             best_score = score
 
             best_driver = driver
 
-    print("FINAL BEST DRIVER:", best_driver)
+    print(
+        "FINAL BEST DRIVER:",
+        best_driver
+    )
 
     return best_driver

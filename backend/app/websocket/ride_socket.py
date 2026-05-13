@@ -1,3 +1,5 @@
+import json
+
 from fastapi import APIRouter
 from fastapi import WebSocket
 from fastapi import WebSocketDisconnect
@@ -9,12 +11,18 @@ from app.websocket.connection_manager import (
 router = APIRouter()
 
 
-@router.websocket("/ws/rides")
-async def ride_socket(
-    websocket: WebSocket
+@router.websocket("/ws/rides/{rider_id}")
+async def rider_socket(
+    websocket: WebSocket,
+    rider_id: str
 ):
 
-    await manager.connect(websocket)
+    await manager.connect_rider(
+        rider_id,
+        websocket
+    )
+
+    print(f"RIDER CONNECTED: {rider_id}")
 
     try:
 
@@ -22,14 +30,12 @@ async def ride_socket(
 
             data = await websocket.receive_text()
 
-            print("RIDE EVENT:", data)
-
-            await manager.broadcast(
-                f"Ride update: {data}"
-            )
+            print("RIDER EVENT:", data)
 
     except WebSocketDisconnect:
 
-        manager.disconnect(websocket)
+        manager.disconnect_rider(
+            rider_id
+        )
 
-        print("Ride disconnected")
+        print("RIDER DISCONNECTED")

@@ -1,9 +1,25 @@
+import json
+import asyncio
+
 from app.modules.matching.engine import (
     find_best_driver
 )
+from app.modules.matching.eta import (
+    calculate_eta
+)
+from app.modules.matching.retry_logic import (
+    retry_dispatch
+)
+
+from app.websocket.connection_manager import (
+    manager
+)
 
 
-def assign_driver_to_ride(db, ride):
+async def assign_driver_to_ride(
+    db,
+    ride
+):
 
     driver = find_best_driver(
         db,
@@ -11,19 +27,62 @@ def assign_driver_to_ride(db, ride):
         ride.pickup_lng
     )
 
-    # DRIVER FOUND
     if driver:
 
+        # ASSIGN DRIVER
         ride.driver_id = driver.id
+        eta = calculate_eta(
 
+            driver.current_lat,
+            driver.current_lng,
+
+            ride.pickup_lat,
+            ride.pickup_lng
+)
+
+        print("ETA:", eta)
         ride.status = "assigned"
 
-    else:
+        db.commit()
 
-        ride.status = "searching"
+        db.refresh(ride)
 
-    db.commit()
+        # SEND EVENT TO DRIVER
+        await manager.send_to_driver(
 
-    db.refresh(ride)
+            str(driver.id),
+
+            json.dumps({
+                "type": "new_ride",
+                "ride_id": ride.id,
+                "pickup": ride.pickup_location,
+                "drop": ride.drop_location
+            })
+        )
+
+        # SEND EVENT TO RIDER
+        await manager.send_to_rider(
+
+            str(ride.rider_id),
+
+            json.dumps({
+                "type": "driver_assigned",
+
+                "ride_id": ride.id,
+
+                "driver_id": driver.id,
+
+                "eta": eta
+            })
+        )
+
+        # START RETRY TIMER
+        asyncio.create_task(
+
+            retry_dispatch(
+                
+                ride.id
+            )
+        )
 
     return ride

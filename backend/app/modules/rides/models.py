@@ -1,5 +1,5 @@
 from sqlalchemy import Column, String, Float
-
+from sqlalchemy import JSON
 from app.database.base import Base
 
 
@@ -38,3 +38,8 @@ class Ride(Base):
     status = Column(String)
 
     fare = Column(String)
+
+    rejected_drivers = Column(
+        JSON,
+        default=[]
+    )
