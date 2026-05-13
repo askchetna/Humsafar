@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>WebSocket Test</title>
+</head>
+
+<body>
+
+    <h2>Driver Socket Test</h2>
+
+    <button onclick="sendLocation()">
+        Send Driver Location
+    </button>
+
+    <button onclick="acceptRide()">
+        Accept Ride
+    </button>
+
+    <script>
+
+        // =====================================
+        // DRIVER SOCKET
+        // =====================================
+
+        const socket = new WebSocket(
+            "ws://127.0.0.1:8000/ws/drivers/driver_123"
+        );
+
+        socket.onopen = function () {
+
+            console.log("DRIVER CONNECTED");
+        };
+
+        socket.onmessage = function (event) {
+
+            console.log(
+                "DRIVER SOCKET MESSAGE:",
+                event.data
+            );
+        };
+
+        socket.onclose = function () {
+
+            console.log("DRIVER DISCONNECTED");
+        };
+
+
+
+        // =====================================
+        // SEND DRIVER LOCATION
+        // =====================================
+
+        function sendLocation() {
+
+            const data = {
+
+                type: "location_update",
+
+                driver_id: "driver_123",
+
+                lat: 18.5204,
+
+                lng: 73.8567,
+
+                status: "online"
+            };
+
+            socket.send(
+                JSON.stringify(data)
+            );
+
+            console.log("LOCATION SENT");
+        }
+
+
+
+        // =====================================
+        // ACCEPT RIDE EVENT
+        // =====================================
+
+        function acceptRide() {
+
+            const data = {
+
+                type: "accept_ride",
+
+                rider_id: "4a3b0702-fb70-4125-8099-00f4ddbbd490"
+            };
+
+            socket.send(
+                JSON.stringify(data)
+            );
+
+            console.log("RIDE ACCEPT EVENT SENT");
+        }
+
+
+
+        // =====================================
+        // RIDER SOCKET
+        // =====================================
+
+        const riderSocket = new WebSocket(
+            "ws://127.0.0.1:8000/ws/rides/4a3b0702-fb70-4125-8099-00f4ddbbd490"
+        );
+
+        riderSocket.onopen = function () {
+
+            console.log("RIDER CONNECTED");
+        };
+
+        riderSocket.onmessage = function(event) {
+
+            const data = JSON.parse(event.data);
+
+            console.log(
+                "RIDER EVENT:",
+                data
+            );
+            if (data.eta) {
+
+                console.log(
+                    "DRIVER ETA:",
+                    data.eta,
+                    "minutes"
+)
+}
+            // DRIVER LIVE LOCATION
+            if (data.type === "driver_location") {
+
+                console.log(
+                    "DRIVER MOVED:",
+                    data.lat,
+                    data.lng
+                );
+            }
+
+            // RIDE ACCEPTED
+            if (data.type === "ride_accepted") {
+
+                alert("Driver accepted ride");
+            }
+        };
+
+    </script>
+
+</body>
+
+</html>
