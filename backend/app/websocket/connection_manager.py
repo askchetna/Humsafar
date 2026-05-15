@@ -1,6 +1,3 @@
-driver_connections = {}
-
-rider_connections = {}
 from fastapi import WebSocket
 
 
@@ -17,7 +14,10 @@ class ConnectionManager:
         # RIDER SOCKETS
         self.rider_connections = {}
 
+    # =====================================
     # GENERIC CONNECT
+    # =====================================
+
     async def connect(
         self,
         websocket: WebSocket
@@ -25,11 +25,16 @@ class ConnectionManager:
 
         await websocket.accept()
 
-        self.active_connections.append(websocket)
+        self.active_connections.append(
+            websocket
+        )
 
         print("CONNECTION OPEN")
 
-    # DISCONNECT
+    # =====================================
+    # GENERIC DISCONNECT
+    # =====================================
+
     def disconnect(
         self,
         websocket: WebSocket
@@ -37,11 +42,16 @@ class ConnectionManager:
 
         if websocket in self.active_connections:
 
-            self.active_connections.remove(websocket)
+            self.active_connections.remove(
+                websocket
+            )
 
         print("CONNECTION CLOSED")
 
-    # DRIVER REGISTER
+    # =====================================
+    # REGISTER DRIVER
+    # =====================================
+
     async def register_driver(
         self,
         driver_id,
@@ -50,11 +60,18 @@ class ConnectionManager:
 
         await websocket.accept()
 
-        self.driver_connections[driver_id] = websocket
+        self.driver_connections[
+            driver_id
+        ] = websocket
 
-        print(f"DRIVER CONNECTED: {driver_id}")
+        print(
+            f"DRIVER CONNECTED: {driver_id}"
+        )
 
-    # RIDER REGISTER
+    # =====================================
+    # REGISTER RIDER
+    # =====================================
+
     async def register_rider(
         self,
         rider_id,
@@ -63,37 +80,77 @@ class ConnectionManager:
 
         await websocket.accept()
 
-        self.rider_connections[rider_id] = websocket
+        self.rider_connections[
+            rider_id
+        ] = websocket
 
-        print(f"RIDER CONNECTED: {rider_id}")
+        print(
+            f"RIDER CONNECTED: {rider_id}"
+        )
 
-    # SEND TO DRIVER
-    async def send_to_driver(
+    # =====================================
+    # DISCONNECT RIDER
+    # =====================================
+
+    def disconnect_rider(
         self,
-        driver_id,
-        message
+        rider_id
     ):
 
-        websocket = self.driver_connections.get(driver_id)
+        if rider_id in self.rider_connections:
 
-        if websocket:
+            del self.rider_connections[
+                rider_id
+            ]
 
-            await websocket.send_text(message)
+        print(
+            f"RIDER DISCONNECTED: {rider_id}"
+        )
 
+    # =====================================
     # SEND TO RIDER
+    # =====================================
+
     async def send_to_rider(
         self,
         rider_id,
         message
     ):
 
-        websocket = self.rider_connections.get(rider_id)
+        websocket = self.rider_connections.get(
+            rider_id
+        )
 
         if websocket:
 
-            await websocket.send_text(message)
+            await websocket.send_text(
+                message
+            )
 
+    # =====================================
+    # SEND TO DRIVER
+    # =====================================
+
+    async def send_to_driver(
+        self,
+        driver_id,
+        message
+    ):
+
+        websocket = self.driver_connections.get(
+            driver_id
+        )
+
+        if websocket:
+
+            await websocket.send_text(
+                message
+            )
+
+    # =====================================
     # BROADCAST
+    # =====================================
+
     async def broadcast(
         self,
         message
@@ -101,40 +158,9 @@ class ConnectionManager:
 
         for connection in self.active_connections:
 
-            await connection.send_text(message)
+            await connection.send_text(
+                message
+            )
 
 
 manager = ConnectionManager()
-
-async def connect_rider(
-    self,
-    rider_id,
-    websocket
-):
-
-    await websocket.accept()
-
-    rider_connections[rider_id] = websocket
-
-
-def disconnect_rider(
-    self,
-    rider_id
-):
-
-    if rider_id in rider_connections:
-
-        del rider_connections[rider_id]
-
-
-async def send_to_rider(
-    self,
-    rider_id,
-    message
-):
-
-    websocket = rider_connections.get(rider_id)
-
-    if websocket:
-
-        await websocket.send_text(message)

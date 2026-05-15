@@ -17,7 +17,9 @@ async def rider_socket(
     rider_id: str
 ):
 
-    await manager.connect_rider(
+    # CONNECT RIDER
+
+    await manager.register_rider(
         rider_id,
         websocket
     )
@@ -28,14 +30,26 @@ async def rider_socket(
 
         while True:
 
+            # RECEIVE MESSAGE
             data = await websocket.receive_text()
 
             print("RIDER EVENT:", data)
 
+            # PARSE JSON
+            parsed_data = json.loads(data)
+
+            # SEND TO ALL RIDERS
+            for rider_ws in manager.rider_connections.values():
+
+                await rider_ws.send_text(
+                    json.dumps(parsed_data)
+                )
+
     except WebSocketDisconnect:
 
-        manager.disconnect_rider(
-            rider_id
+        manager.rider_connections.pop(
+            rider_id,
+            None
         )
 
         print("RIDER DISCONNECTED")
