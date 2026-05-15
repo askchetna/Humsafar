@@ -2,76 +2,50 @@ import asyncio
 import json
 
 from app.database.session import SessionLocal
-
 from app.modules.rides.models import Ride
-
-from app.modules.matching.engine import (
-    find_best_driver
-)
-
-from app.websocket.connection_manager import (
-    manager
-)
+from app.modules.matching.engine import find_best_driver
+from app.websocket.connection_manager import manager
 
 
-async def retry_dispatch(
-    ride_id: str
-):
+async def retry_dispatch(ride_id: str):
 
     print("DISPATCH TIMER STARTED")
 
-    await asyncio.sleep(10)
+    await asyncio.sleep(15)
 
-    # NEW DATABASE SESSION
     db = SessionLocal()
 
     try:
 
-        # GET FRESH RIDE
-        ride = db.query(Ride).filter(
-            Ride.id == ride_id
-        ).first()
+        ride = db.query(Ride).filter(Ride.id == ride_id).first()
 
         if not ride:
-
-            print("RIDE NOT FOUND")
-
+            print("RIDE NOT FOUND IN RETRY")
             return
 
-        # IF ACCEPTED
-        if ride.status == "accepted":
-
-            print("RIDE ACCEPTED")
-
+        # Already accepted or further — do nothing
+        if ride.status in ("accepted", "arrived", "started", "completed", "cancelled"):
+            print(f"RIDE ALREADY IN STATUS: {ride.status}")
             return
 
-        print("DRIVER DID NOT ACCEPT")
+        print("DRIVER DID NOT ACCEPT — RETRYING DISPATCH")
 
-        old_driver_id = ride.driver_id
+        # Capture old driver before reset
+        old_driver_id = str(ride.driver_id) if ride.driver_id else None
 
-        # RESET
+        # Track rejected drivers
+        rejected = list(ride.rejected_drivers or [])
+        if old_driver_id and old_driver_id not in rejected:
+            rejected.append(old_driver_id)
+
+        # Reset ride
         ride.driver_id = None
-
         ride.status = "searching"
-
+        ride.rejected_drivers = rejected
         db.commit()
-
         db.refresh(ride)
 
-        # FIND NEXT DRIVER
-        # SAVE OLD DRIVER
-        old_driver_id = str(ride.driver_id)
-
-# ADD TO REJECTED LIST
-        rejected = ride.rejected_drivers or []
-
-        rejected.append(old_driver_id)
-
-        ride.rejected_drivers = rejected
-
-        db.commit()
-
-# FIND NEW DRIVER
+        # Find next available driver
         next_driver = find_best_driver(
             db,
             ride.pickup_lat,
@@ -79,42 +53,27 @@ async def retry_dispatch(
             excluded_drivers=rejected
         )
 
-        # PREVENT SAME DRIVER
-        if (
-            next_driver
-            and str(next_driver.id) == str(old_driver_id)
-        ):
-
-            print("SAME DRIVER FOUND AGAIN")
-
-            return
-
         if next_driver:
 
             ride.driver_id = next_driver.id
-
             ride.status = "assigned"
-
             db.commit()
-
             db.refresh(ride)
 
-            print("NEW DRIVER ASSIGNED")
+            print(f"NEW DRIVER ASSIGNED: {next_driver.id}")
 
-            # SEND TO DRIVER
             await manager.send_to_driver(
                 str(next_driver.id),
-
                 json.dumps({
                     "type": "new_ride",
-                    "ride_id": ride.id
+                    "ride_id": ride.id,
+                    "pickup": ride.pickup_location,
+                    "drop": ride.drop_location
                 })
             )
 
-            # SEND TO RIDER
             await manager.send_to_rider(
                 str(ride.rider_id),
-
                 json.dumps({
                     "type": "driver_reassigned",
                     "ride_id": ride.id,
@@ -122,10 +81,23 @@ async def retry_dispatch(
                 })
             )
 
+            # Schedule another retry
+            asyncio.create_task(retry_dispatch(ride.id))
+
         else:
 
-            print("NO DRIVERS AVAILABLE")
+            print("NO DRIVERS AVAILABLE — CANCELLING RIDE")
+
+            ride.status = "cancelled"
+            db.commit()
+
+            await manager.send_to_rider(
+                str(ride.rider_id),
+                json.dumps({
+                    "type": "no_drivers_available",
+                    "ride_id": ride.id
+                })
+            )
 
     finally:
-
         db.close()

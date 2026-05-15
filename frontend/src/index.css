@@ -9,4 +9,14 @@ body,
     padding: 0;
     height: 100%;
     width: 100%;
+    background: #0a0a0a;
 }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #333; border-radius: 99px; }
+
+/* Leaflet dark overrides */
+.leaflet-container { background: #1a1a1a !important; }
+.leaflet-control-attribution { display: none !important; }

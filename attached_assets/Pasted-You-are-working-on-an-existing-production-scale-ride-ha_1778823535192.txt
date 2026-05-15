@@ -1,0 +1,216 @@
+You are working on an existing production-scale ride-hailing platform called HUMSAFAR.
+
+IMPORTANT RULES:
+- NEVER overwrite stable working files.
+- NEVER rename existing folders/files.
+- NEVER break current architecture.
+- ONLY improve and complete missing implementations.
+- FIRST inspect existing folders/files before creating anything.
+- If a module/file already exists, extend/fix it instead of duplicating it.
+- Preserve all existing imports and architecture style.
+- Fix all unresolved imports automatically.
+- Fix all runtime/build errors.
+- Keep backend and frontend compatible.
+
+====================================================
+PROJECT GOAL
+====================================================
+
+Build a realtime AI-powered ride platform with:
+
+- Rider app
+- Driver app
+- Live driver tracking
+- Ride lifecycle management
+- WebSocket realtime updates
+- Matching engine
+- ETA engine
+- Retry dispatch engine
+- Auth system
+- Driver assignment
+- Vehicle management
+- Realtime map
+- Realtime ride status sync
+
+====================================================
+BACKEND TASKS
+====================================================
+
+Inspect and complete all existing backend modules.
+
+If folders/files are empty, implement them professionally.
+
+DO NOT duplicate router/routes confusion.
+Use ONLY ONE canonical router file per module.
+
+Ensure all modules are connected correctly in main.py.
+
+Backend stack:
+- FastAPI
+- SQLAlchemy
+- WebSockets
+- JWT Auth
+- Pydantic
+- SQLite/Postgres compatible
+
+====================================================
+FIX THESE ISSUES
+====================================================
+
+1. Fix duplicate ride router imports.
+2. Remove routes.py vs router.py confusion safely.
+3. Ensure /api/v1/rides routes work.
+4. Ensure websocket routes work.
+5. Ensure JWT auth works.
+6. Ensure protected routes validate tokens correctly.
+7. Ensure all imports resolve successfully.
+8. Ensure no circular imports.
+9. Ensure all models are registered.
+10. Ensure startup works without errors.
+
+====================================================
+IMPLEMENT/FINISH THESE MODULES
+====================================================
+
+Inspect existing structure and complete missing logic.
+
+Complete safely:
+
+- auth
+- rides
+- drivers
+- vehicles
+- matching
+- websocket
+- notifications
+- ratings
+- payments
+- support
+- shared schemas
+- enums
+- responses
+- utils
+
+====================================================
+RIDE FLOW
+====================================================
+
+Complete full lifecycle:
+
+searching
+assigned
+accepted
+arrived
+started
+completed
+cancelled
+
+Use state-machine validation everywhere.
+
+====================================================
+MATCHING ENGINE
+====================================================
+
+Implement:
+- nearest driver matching
+- ETA calculation
+- retry dispatch
+- realtime driver updates
+
+====================================================
+WEBSOCKET
+====================================================
+
+Complete:
+- rider websocket
+- driver websocket
+- connection manager
+- reconnect handling
+- realtime ride events
+- live location updates
+
+====================================================
+FRONTEND TASKS
+====================================================
+
+Frontend stack:
+- React
+- Vite
+- Tailwind
+- Leaflet/OpenStreetMap
+- Zustand
+- Axios
+
+====================================================
+BUILD COMPLETE UI
+====================================================
+
+Create/complete:
+
+1. Rider Home
+2. Driver Dashboard
+3. Ride Request Panel
+4. Live Driver Tracking
+5. Ride Status Timeline
+6. ETA Display
+7. Driver Card
+8. Vehicle Card
+9. Realtime Notifications
+10. Navbar
+11. Login/Register
+12. Protected Routes
+13. Socket State Sync
+14. Ride History
+15. Loading States
+16. Error Handling
+17. Toast Notifications
+18. Responsive UI
+19. Dark professional design
+20. Mobile friendly layout
+
+====================================================
+FRONTEND FIXES
+====================================================
+
+1. Fix all axios issues
+2. Fix Zustand imports
+3. Fix websocket frontend integration
+4. Fix API base URLs
+5. Fix proxy config
+6. Fix build issues
+7. Fix runtime crashes
+8. Remove unused imports
+9. Ensure production build succeeds
+
+====================================================
+IMPORTANT
+====================================================
+
+- Auto inspect project structure FIRST.
+- Do NOT create duplicate files.
+- Do NOT create unnecessary files.
+- Only create files if missing.
+- Keep architecture scalable.
+- Keep code modular and production-ready.
+- Add comments only where important.
+- Keep naming consistent.
+- Ensure frontend + backend integration fully works.
+- Ensure deployment-ready setup.
+- Ensure websocket deployment compatibility.
+- Ensure Replit deployment compatibility.
+
+====================================================
+FINAL TASK
+====================================================
+
+After implementation:
+1. Run backend checks
+2. Run frontend checks
+3. Fix all remaining errors automatically
+4. Verify imports
+5. Verify API routes
+6. Verify websocket connections
+7. Verify build success
+8. Show final architecture summary
+9. Show remaining TODOs if any
+10. Do NOT stop midway

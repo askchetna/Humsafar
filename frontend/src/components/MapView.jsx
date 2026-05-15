@@ -1,111 +1,93 @@
-import DriverMarker from "./DriverMarker"
-import {
-    MapContainer,
-    TileLayer,
-    
-    useMap
-} from "react-leaflet"
-
+import { useEffect, useRef } from "react"
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet"
+import L from "leaflet"
 import "leaflet/dist/leaflet.css"
 
-import { useEffect, useState } from "react"
+// Fix default leaflet marker icon
+delete L.Icon.Default.prototype._getIconUrl
+L.Icon.Default.mergeOptions({
+    iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+    iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+    shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png"
+})
 
-import socket from "../services/socket"
+const driverIcon = new L.DivIcon({
+    className: "",
+    html: `<div style="
+        width:40px;height:40px;
+        background:#fbbf24;
+        border-radius:50%;
+        display:flex;align-items:center;justify-content:center;
+        font-size:20px;
+        border:3px solid #fff;
+        box-shadow:0 2px 10px rgba(0,0,0,0.4);
+    ">🚗</div>`,
+    iconSize: [40, 40],
+    iconAnchor: [20, 20]
+})
 
+const pickupIcon = new L.DivIcon({
+    className: "",
+    html: `<div style="
+        width:14px;height:14px;
+        background:#22c55e;
+        border-radius:50%;
+        border:3px solid #fff;
+        box-shadow:0 2px 6px rgba(0,0,0,0.4);
+    "></div>`,
+    iconSize: [14, 14],
+    iconAnchor: [7, 7]
+})
 
-function MoveMap({ position }) {
-
+function PanTo({ position }) {
     const map = useMap()
-
+    const prev = useRef(null)
     useEffect(() => {
-
-        map.panTo(position)
-
-    }, [position])
-
+        if (!position) return
+        const key = `${position[0]},${position[1]}`
+        if (key !== prev.current) {
+            map.panTo(position, { animate: true })
+            prev.current = key
+        }
+    }, [position, map])
     return null
 }
 
-
-export default function MapView() {
-
-    const [position, setPosition] = useState(
-        [18.5204, 73.8567]
-    )
-
-    useEffect(() => {
-
-        let interval
-    
-        socket.onopen = () => {
-    
-            console.log("SOCKET CONNECTED")
-    
-            let lat = 18.5204
-            let lng = 73.8567
-    
-            interval = setInterval(() => {
-    
-                lat += 0.001
-                lng += 0.001
-    
-                socket.send(
-                    JSON.stringify({
-                        type: "driver_location",
-                        lat,
-                        lng
-                    })
-                )
-    
-            }, 3000)
-        }
-    
-        socket.onmessage = (event) => {
-    
-            const data = JSON.parse(
-                event.data
-            )
-    
-            console.log(data)
-    
-            if (data.type === "driver_location") {
-    
-                setPosition([
-                    data.lat,
-                    data.lng
-                ])
-            }
-        }
-    
-        return () => {
-    
-            clearInterval(interval)
-    
-        }
-    
-    }, [])
+export default function MapView({ driverPosition, pickupPosition, center }) {
+    const defaultCenter = center || [33.6844, 73.0479] // Islamabad
 
     return (
-
         <MapContainer
-            center={position}
+            center={defaultCenter}
             zoom={13}
-            style={{
-                height: "100vh",
-                width: "100%"
-            }}
+            style={{ height: "100%", width: "100%" }}
+            zoomControl={false}
         >
-
             <TileLayer
-                attribution="Humsafar"
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
 
+            {driverPosition && (
+                <>
+                    <PanTo position={[driverPosition.lat, driverPosition.lng]} />
+                    <Marker
+                        position={[driverPosition.lat, driverPosition.lng]}
+                        icon={driverIcon}
+                    >
+                        <Popup>Driver Location</Popup>
+                    </Marker>
+                </>
+            )}
 
-<DriverMarker
-    position={position}
-/>
-
+            {pickupPosition && (
+                <Marker
+                    position={[pickupPosition.lat, pickupPosition.lng]}
+                    icon={pickupIcon}
+                >
+                    <Popup>Pickup Point</Popup>
+                </Marker>
+            )}
         </MapContainer>
     )
 }
