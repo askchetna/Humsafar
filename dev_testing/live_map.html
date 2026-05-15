@@ -3,7 +3,7 @@
 
 <head>
 
-    <title>Humsafar Live Map</title>
+    <title>Humsafar Live Tracking</title>
 
     <meta charset="utf-8" />
 
@@ -17,6 +17,7 @@
         body {
             margin: 0;
             padding: 0;
+            overflow: hidden;
         }
 
         #map {
@@ -36,140 +37,152 @@
 
     <script>
 
-        // =====================================
-        // CREATE MAP
-        // =====================================
+        // =========================================
+        // MAP SETUP
+        // =========================================
 
-        const map = L.map('map').setView(
+        const map = L.map("map").setView(
             [18.5204, 73.8567],
             13
         );
 
-
-
-        // =====================================
-        // TILE LAYER
-        // =====================================
+        // =========================================
+        // MAP TILE
+        // =========================================
 
         L.tileLayer(
-            'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+            "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
             {
-                attribution: 'Humsafar'
+                attribution: "Humsafar"
             }
         ).addTo(map);
 
-
-
-        // =====================================
+        // =========================================
         // DRIVER MARKER
-        // =====================================
+        // =========================================
 
-        let driverMarker = L.marker(
+        const driverMarker = L.marker(
             [18.5204, 73.8567]
         ).addTo(map);
 
         driverMarker.bindPopup(
-            "Driver Online"
+            "🚖 Driver Online"
         );
 
+        // =========================================
+        // SOCKET URL
+        // =========================================
 
+        const SOCKET_URL =
+            "ws://127.0.0.1:8000/ws/rides/test_ride";
 
-        // =====================================
+        // =========================================
         // DRIVER SOCKET
-        // =====================================
+        // =========================================
 
-        const socket = new WebSocket(
-            "ws://127.0.0.1:8000/ws/drivers/driver_123"
-        );
+        const driverSocket =
+            new WebSocket(SOCKET_URL);
 
+        // =========================================
+        // RIDER SOCKET
+        // =========================================
 
+        const riderSocket =
+            new WebSocket(SOCKET_URL);
 
-        // =====================================
-        // ON CONNECT
-        // =====================================
+        // =========================================
+        // DRIVER CONNECTED
+        // =========================================
 
-        socket.onopen = () => {
+        driverSocket.onopen = () => {
 
-            console.log("DRIVER CONNECTED");
-
-            // SIMULATE DRIVER MOVEMENT
+            console.log("🚖 DRIVER CONNECTED");
 
             let lat = 18.5204;
             let lng = 73.8567;
 
+            // =====================================
+            // SIMULATE MOVEMENT
+            // =====================================
+
             setInterval(() => {
 
-                lat += 0.0005;
-                lng += 0.0005;
+                lat += 0.001;
+                lng += 0.001;
 
-                socket.send(
+                const payload = {
 
-                    JSON.stringify({
+                    type: "driver_location",
 
-                        type: "location_update",
+                    driver_id: "driver_123",
 
-                        driver_id: "driver_123",
+                    lat: lat,
 
-                        lat: lat,
+                    lng: lng,
 
-                        lng: lng,
+                    status: "online"
+                };
 
-                        status: "online"
-                    })
+                // SEND TO BACKEND
+
+                driverSocket.send(
+                    JSON.stringify(payload)
                 );
 
                 console.log(
-                    "LOCATION SENT:",
-                    lat,
-                    lng
+                    "📡 LOCATION SENT:",
+                    payload
                 );
 
             }, 3000);
 
         };
 
+        // =========================================
+        // DRIVER EVENTS
+        // =========================================
 
-
-        // =====================================
-        // RECEIVE REALTIME EVENTS
-        // =====================================
-
-        socket.onmessage = (event) => {
+        driverSocket.onmessage = (event) => {
 
             console.log(
-                "SOCKET MESSAGE:",
+                "🚖 DRIVER SOCKET:",
                 event.data
             );
+
         };
 
+        // =========================================
+        // RIDER CONNECTED
+        // =========================================
 
+        riderSocket.onopen = () => {
 
-        // =====================================
-        // RIDER SOCKET
-        // =====================================
+            console.log("🧍 RIDER CONNECTED");
 
-        const riderSocket = new WebSocket(
-            "ws://127.0.0.1:8000/ws/rides/eee31958-e301-4fe3-b02d-a87ed9dfe020"
-        );
+        };
 
-
-
-        // =====================================
-        // RECEIVE DRIVER LIVE LOCATION
-        // =====================================
+        // =========================================
+        // RIDER RECEIVES LIVE LOCATION
+        // =========================================
 
         riderSocket.onmessage = (event) => {
+
+            console.log(
+                "🧍 RIDER EVENT RAW:",
+                event.data
+            );
 
             const data = JSON.parse(
                 event.data
             );
 
-            console.log(
-                "RIDER EVENT:",
-                data
-            );
+            // =====================================
+            // DRIVER LOCATION EVENT
+            // =====================================
 
-            if (data.type === "driver_location") {
+            if (
+                data.type === "driver_location"
+            ) {
 
                 const newLatLng = [
                     data.lat,
@@ -177,15 +190,64 @@
                 ];
 
                 // MOVE DRIVER MARKER
+
                 driverMarker.setLatLng(
                     newLatLng
                 );
 
                 // MOVE MAP CAMERA
+
                 map.panTo(
                     newLatLng
                 );
+
+                console.log(
+                    "✅ DRIVER MOVED:",
+                    newLatLng
+                );
             }
+
+        };
+
+        // =========================================
+        // SOCKET ERRORS
+        // =========================================
+
+        driverSocket.onerror = (error) => {
+
+            console.log(
+                "❌ DRIVER SOCKET ERROR:",
+                error
+            );
+
+        };
+
+        riderSocket.onerror = (error) => {
+
+            console.log(
+                "❌ RIDER SOCKET ERROR:",
+                error
+            );
+
+        };
+
+        // =========================================
+        // SOCKET CLOSE
+        // =========================================
+
+        driverSocket.onclose = () => {
+
+            console.log(
+                "🚖 DRIVER DISCONNECTED"
+            );
+
+        };
+
+        riderSocket.onclose = () => {
+
+            console.log(
+                "🧍 RIDER DISCONNECTED"
+            );
 
         };
 
