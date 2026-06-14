@@ -91,6 +91,11 @@ Release candidate for staging QA. Core ride-hailing platform operational with 54
 - No SMS/OTP verification despite schema stubs
 - Map UI not covered by automated browser tests
 
+### Commercial Deployment (docs)
+
+- [`docs/COMMERCIAL_DEPLOYMENT.md`](docs/COMMERCIAL_DEPLOYMENT.md) — demo checklist, VPS/Docker, domain, SSL, backups, monitoring, business packaging, investor script
+- `docker-compose.yml`, `backend/Dockerfile`, `frontend/Dockerfile`, `docker/nginx.conf`
+
 ---
 
 ## [0.1.0] - Prior history

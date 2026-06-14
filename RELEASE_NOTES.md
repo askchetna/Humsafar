@@ -143,14 +143,21 @@ alembic upgrade head
 
 ## Production Checklist (before v1.0.0 GA)
 
+See **[`docs/COMMERCIAL_DEPLOYMENT.md`](docs/COMMERCIAL_DEPLOYMENT.md)** for the full commercial deployment runbook:
+
+- Demo checklist, VPS/Docker deploy, domain + SSL
+- Backup, monitoring, business packaging, investor demo script
+
+Quick gates:
+
 - [ ] Set strong `JWT_SECRET` in production environment
 - [ ] Deploy PostgreSQL and run Alembic migrations
 - [ ] Enable Redis (`REDIS_ENABLED=true`)
 - [ ] Restrict `CORS_ORIGINS` to production domain
 - [ ] Integrate real payment gateway
-- [ ] Add monitoring (Sentry/Datadog) and HTTPS/WAF
+- [ ] Add monitoring (Sentry/Uptime) and HTTPS/WAF
 - [ ] Complete manual QA on map and mobile browsers
-- [ ] Remove duplicate `humsafar.db` from repo root if present
+- [ ] Docker or VPS deploy verified (`docker compose up -d --build`)
 
 ---
 
@@ -159,8 +166,10 @@ alembic upgrade head
 | Document | Purpose |
 |----------|---------|
 | `CHANGELOG.md` | Full version history |
+| `docs/COMMERCIAL_DEPLOYMENT.md` | **Commercial deploy, demo, investor script** |
 | `docs/CTO_RELEASE_AUDIT.md` | Architecture audit and production readiness |
 | `backend/.env.example` | Environment variable reference |
+| `docker-compose.yml` | Docker production stack |
 | `dev_testing/e2e_test.py` | Automated regression suite |
 
 ---

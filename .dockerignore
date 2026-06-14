@@ -1,0 +1,15 @@
+**/__pycache__
+**/*.pyc
+**/.env
+**/.env.local
+**/*.db
+**/node_modules
+**/dist
+.git
+.github
+docs
+dev_testing
+report.md
+attached_assets
+*.md
+!requirements.txt

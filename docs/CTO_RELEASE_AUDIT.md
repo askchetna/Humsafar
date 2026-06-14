@@ -215,18 +215,25 @@ All changes followed **modify existing, don't duplicate** rule.
 
 ## Production Checklist
 
+## Production Checklist
+
+Full commercial deployment guide: **[`COMMERCIAL_DEPLOYMENT.md`](COMMERCIAL_DEPLOYMENT.md)**
+
 ### Must complete before production launch
 
 - [ ] Set strong `JWT_SECRET` in production env
 - [ ] Deploy PostgreSQL; run `alembic upgrade head`
 - [ ] Enable Redis (`REDIS_ENABLED=true`) for geo + rate limits
 - [ ] Restrict `CORS_ORIGINS` to production domain
-- [ ] Remove duplicate `humsafar.db` from repo root
+- [ ] Docker or VPS deploy per commercial guide
+- [ ] Domain + SSL (Let's Encrypt)
+- [ ] Backup cron + monthly restore drill
+- [ ] Uptime monitoring on `/health`
 - [ ] Wire real payment gateway (Stripe/JazzCash)
 - [ ] Add Playwright browser E2E
 - [ ] Set up monitoring (Sentry/Datadog)
 - [ ] HTTPS termination + WAF
-- [ ] Backup strategy for PostgreSQL
+- [ ] Complete demo checklist before go-live
 
 ### Staging ready (now)
 
@@ -307,7 +314,11 @@ Humsafar/
 │   ├── humsafar.db
 │   └── .env.example
 ├── dev_testing/                      e2e_test.py, test_socket.html, live_map.html
-├── docs/CTO_RELEASE_AUDIT.md         ← THIS FILE
+├── docker/                           nginx.conf
+├── docker-compose.yml                Docker production stack
+├── docs/
+│   ├── COMMERCIAL_DEPLOYMENT.md      Commercial deploy + investor demo
+│   └── CTO_RELEASE_AUDIT.md
 ├── frontend/src/
 │   ├── api/axios.js
 │   ├── components/                   MapView, RidePanel, Navbar, ...
@@ -341,7 +352,7 @@ Humsafar/
 |-------------|----------|
 | **Local dev** | ✅ Go |
 | **Staging QA** | ✅ Go — all audit items addressed |
-| **Production** | ⛔ Hold — complete production checklist |
+| **Production** | ⛔ Hold — complete [`COMMERCIAL_DEPLOYMENT.md`](COMMERCIAL_DEPLOYMENT.md) |
 | **SaaS launch** | ⛔ Hold — see SaaS readiness |
 
 ---
