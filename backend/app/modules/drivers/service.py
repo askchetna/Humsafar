@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from app.modules.drivers.models import DriverProfile
+from app.utils.redis_client import cache_driver_location, remove_driver_from_geo
 
 
 def go_online(db, driver_id, lat, lng):
@@ -20,6 +21,8 @@ def go_online(db, driver_id, lat, lng):
     db.commit()
     db.refresh(driver)
 
+    cache_driver_location(driver.id, lat, lng)
+
     return driver
 
 
@@ -36,5 +39,7 @@ def go_offline(db, driver_id):
 
     db.commit()
     db.refresh(driver)
+
+    remove_driver_from_geo(driver.id)
 
     return driver

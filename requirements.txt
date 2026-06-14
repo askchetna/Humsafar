@@ -12,3 +12,5 @@ passlib[bcrypt]
 redis
 websockets
 python-multipart
+httpx
+requests

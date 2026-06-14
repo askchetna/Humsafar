@@ -1,12 +1,12 @@
 import json
+import logging
 
-from fastapi import APIRouter
-from fastapi import WebSocket
-from fastapi import WebSocketDisconnect
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
 
-from app.websocket.connection_manager import (
-    manager
-)
+from app.dependencies.auth import authenticate_websocket
+from app.websocket.connection_manager import manager
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -14,42 +14,29 @@ router = APIRouter()
 @router.websocket("/ws/rides/{rider_id}")
 async def rider_socket(
     websocket: WebSocket,
-    rider_id: str
+    rider_id: str,
+    token: str = Query(default=None)
 ):
 
-    # CONNECT RIDER
+    payload = await authenticate_websocket(websocket, token)
+    if not payload:
+        return
 
-    await manager.register_rider(
-        rider_id,
-        websocket
-    )
+    if payload["user_id"] != rider_id:
+        await websocket.close(code=4003, reason="Unauthorized rider")
+        return
 
-    print(f"RIDER CONNECTED: {rider_id}")
+    await manager.register_rider(rider_id, websocket)
+    logger.info("Rider connected: %s", rider_id)
 
     try:
-
         while True:
-
-            # RECEIVE MESSAGE
             data = await websocket.receive_text()
-
-            print("RIDER EVENT:", data)
-
-            # PARSE JSON
             parsed_data = json.loads(data)
 
-            # SEND TO ALL RIDERS
-            for rider_ws in manager.rider_connections.values():
-
-                await rider_ws.send_text(
-                    json.dumps(parsed_data)
-                )
+            if parsed_data.get("type") == "ping":
+                await websocket.send_json({"type": "pong"})
 
     except WebSocketDisconnect:
-
-        manager.rider_connections.pop(
-            rider_id,
-            None
-        )
-
-        print("RIDER DISCONNECTED")
+        manager.disconnect_rider(rider_id)
+        logger.info("Rider disconnected: %s", rider_id)

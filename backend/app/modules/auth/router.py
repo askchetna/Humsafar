@@ -8,8 +8,10 @@ from fastapi import (
 
 from sqlalchemy.orm import Session
 
+from app.config.settings import settings
 from app.dependencies.database import get_db
 from app.dependencies.auth import get_current_user
+from app.middleware.rate_limit import rate_limit
 
 from app.modules.auth.models import User
 
@@ -62,6 +64,12 @@ def register_user(
             detail="Phone already registered"
         )
 
+    if data.role not in ("rider", "driver"):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid role. Must be rider or driver."
+        )
+
     user = User(
         id=str(uuid.uuid4()),
         full_name=data.full_name,
@@ -82,7 +90,13 @@ def register_user(
     }
 
 
-@router.post("/login")
+@router.post("/login", dependencies=[
+    Depends(rate_limit(
+        "login",
+        settings.RATE_LIMIT_LOGIN_MAX,
+        settings.RATE_LIMIT_LOGIN_WINDOW
+    ))
+])
 def login_user(
     data: LoginSchema,
     db: Session = Depends(get_db)

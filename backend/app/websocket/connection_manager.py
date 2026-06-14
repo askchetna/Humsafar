@@ -1,52 +1,16 @@
 from fastapi import WebSocket
+from fastapi.websockets import WebSocketState
 
 
 class ConnectionManager:
 
     def __init__(self):
 
-        # ALL CONNECTIONS
-        self.active_connections = []
-
         # DRIVER SOCKETS
         self.driver_connections = {}
 
         # RIDER SOCKETS
         self.rider_connections = {}
-
-    # =====================================
-    # GENERIC CONNECT
-    # =====================================
-
-    async def connect(
-        self,
-        websocket: WebSocket
-    ):
-
-        await websocket.accept()
-
-        self.active_connections.append(
-            websocket
-        )
-
-        print("CONNECTION OPEN")
-
-    # =====================================
-    # GENERIC DISCONNECT
-    # =====================================
-
-    def disconnect(
-        self,
-        websocket: WebSocket
-    ):
-
-        if websocket in self.active_connections:
-
-            self.active_connections.remove(
-                websocket
-            )
-
-        print("CONNECTION CLOSED")
 
     # =====================================
     # REGISTER DRIVER
@@ -89,6 +53,25 @@ class ConnectionManager:
         )
 
     # =====================================
+    # DISCONNECT DRIVER
+    # =====================================
+
+    def disconnect_driver(
+        self,
+        driver_id
+    ):
+
+        if driver_id in self.driver_connections:
+
+            del self.driver_connections[
+                driver_id
+            ]
+
+        print(
+            f"DRIVER DISCONNECTED: {driver_id}"
+        )
+
+    # =====================================
     # DISCONNECT RIDER
     # =====================================
 
@@ -108,58 +91,115 @@ class ConnectionManager:
         )
 
     # =====================================
-    # SEND TO RIDER
+    # SAFE SEND TO RIDER
     # =====================================
 
     async def send_to_rider(
         self,
         rider_id,
-        message
+        message: dict
     ):
 
         websocket = self.rider_connections.get(
             rider_id
         )
 
-        if websocket:
+        if not websocket:
+            return
 
-            await websocket.send_text(
-                message
+        try:
+
+            if websocket.client_state == WebSocketState.CONNECTED:
+
+                await websocket.send_json(
+                    message
+                )
+
+        except Exception as e:
+
+            print(
+                "RIDER SEND ERROR:",
+                e
+            )
+
+            self.disconnect_rider(
+                rider_id
             )
 
     # =====================================
-    # SEND TO DRIVER
+    # SAFE SEND TO DRIVER
     # =====================================
 
     async def send_to_driver(
         self,
         driver_id,
-        message
+        message: dict
     ):
 
         websocket = self.driver_connections.get(
             driver_id
         )
 
-        if websocket:
+        if not websocket:
+            return
 
-            await websocket.send_text(
-                message
+        try:
+
+            if websocket.client_state == WebSocketState.CONNECTED:
+
+                await websocket.send_json(
+                    message
+                )
+
+        except Exception as e:
+
+            print(
+                "DRIVER SEND ERROR:",
+                e
+            )
+
+            self.disconnect_driver(
+                driver_id
             )
 
     # =====================================
-    # BROADCAST
+    # BROADCAST TO DRIVERS
     # =====================================
 
-    async def broadcast(
+    async def broadcast_to_drivers(
         self,
-        message
+        message: dict
     ):
 
-        for connection in self.active_connections:
+        disconnected = []
 
-            await connection.send_text(
-                message
+        for driver_id, websocket in self.driver_connections.items():
+
+            try:
+
+                if websocket.client_state == WebSocketState.CONNECTED:
+
+                    await websocket.send_json(
+                        message
+                    )
+
+            except Exception as e:
+
+                print(
+                    "BROADCAST ERROR:",
+                    e
+                )
+
+                disconnected.append(
+                    driver_id
+                )
+
+        # CLEAN DEAD SOCKETS
+
+        for driver_id in disconnected:
+
+            self.disconnect_driver(
+                driver_id
             )
 
 

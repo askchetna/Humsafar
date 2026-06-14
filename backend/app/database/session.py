@@ -1,9 +1,5 @@
 from sqlalchemy import create_engine
-
-from sqlalchemy.orm import (
-    declarative_base,
-    sessionmaker
-)
+from sqlalchemy.orm import sessionmaker
 
 from app.config.settings import settings
 
@@ -11,7 +7,10 @@ from app.config.settings import settings
 DATABASE_URL = settings.DATABASE_URL
 
 
-engine = create_engine(DATABASE_URL)
+engine = create_engine(
+    DATABASE_URL,
+    connect_args={"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+)
 
 
 SessionLocal = sessionmaker(
@@ -19,6 +18,3 @@ SessionLocal = sessionmaker(
     autoflush=False,
     bind=engine
 )
-
-
-Base = declarative_base()

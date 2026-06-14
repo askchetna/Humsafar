@@ -17,7 +17,7 @@ class DriverProfile(Base):
 
     license_number = Column(String, nullable=False)
 
-    is_approved = Column(Boolean, default=True)
+    is_approved = Column(Boolean, default=False)
 
     is_online = Column(Boolean, default=False)
 

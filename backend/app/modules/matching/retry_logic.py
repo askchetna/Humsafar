@@ -1,5 +1,4 @@
 import asyncio
-import json
 
 from app.database.session import SessionLocal
 from app.modules.rides.models import Ride
@@ -50,7 +49,8 @@ async def retry_dispatch(ride_id: str):
             db,
             ride.pickup_lat,
             ride.pickup_lng,
-            excluded_drivers=rejected
+            excluded_drivers=rejected,
+            ride_type=getattr(ride, "ride_type", "standard") or "standard"
         )
 
         if next_driver:
@@ -64,21 +64,21 @@ async def retry_dispatch(ride_id: str):
 
             await manager.send_to_driver(
                 str(next_driver.id),
-                json.dumps({
+                {
                     "type": "new_ride",
                     "ride_id": ride.id,
                     "pickup": ride.pickup_location,
                     "drop": ride.drop_location
-                })
+                }
             )
 
             await manager.send_to_rider(
                 str(ride.rider_id),
-                json.dumps({
+                {
                     "type": "driver_reassigned",
                     "ride_id": ride.id,
                     "driver_id": next_driver.id
-                })
+                }
             )
 
             # Schedule another retry
@@ -93,10 +93,10 @@ async def retry_dispatch(ride_id: str):
 
             await manager.send_to_rider(
                 str(ride.rider_id),
-                json.dumps({
+                {
                     "type": "no_drivers_available",
                     "ride_id": ride.id
-                })
+                }
             )
 
     finally:

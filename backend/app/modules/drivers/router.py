@@ -41,7 +41,8 @@ def create_driver_profile(
         id=str(uuid.uuid4()),
         user_id=current_user["user_id"],
         license_number=data.license_number,
-        vehicle_type=data.vehicle_type
+        vehicle_type=data.vehicle_type,
+        vehicle_number=data.vehicle_number
     )
 
     db.add(profile)
@@ -85,8 +86,19 @@ def get_driver_profile(
 def driver_online(
     driver_id: str,
     payload: DriverOnlineSchema,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
 ):
+
+    profile = db.query(DriverProfile).filter(
+        DriverProfile.id == driver_id
+    ).first()
+
+    if not profile or profile.user_id != current_user["user_id"]:
+        raise HTTPException(
+            status_code=403,
+            detail="Not authorized to go online for this driver"
+        )
 
     driver = go_online(
         db,
@@ -109,8 +121,19 @@ def driver_online(
 @router.post("/go-offline/{driver_id}")
 def driver_offline(
     driver_id: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
 ):
+
+    profile = db.query(DriverProfile).filter(
+        DriverProfile.id == driver_id
+    ).first()
+
+    if not profile or profile.user_id != current_user["user_id"]:
+        raise HTTPException(
+            status_code=403,
+            detail="Not authorized to go offline for this driver"
+        )
 
     driver = go_offline(db, driver_id)
 
@@ -147,6 +170,9 @@ def update_location(
     driver.current_lat = data.lat
 
     driver.current_lng = data.lng
+
+    from app.utils.redis_client import cache_driver_location
+    cache_driver_location(driver.id, data.lat, data.lng)
 
     db.commit()
 

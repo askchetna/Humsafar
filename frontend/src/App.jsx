@@ -1,16 +1,19 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 import { Toaster } from "react-hot-toast"
 
+import Home from "./pages/Home"
 import Login from "./pages/Login"
 import Register from "./pages/Register"
 import RiderDashboard from "./pages/RiderDashboard"
 import DriverDashboard from "./pages/DriverDashboard"
+import AdminDashboard from "./pages/AdminDashboard"
 import ProtectedRoute from "./components/ProtectedRoute"
 import useAuthStore from "./store/authStore"
 
 function RootRedirect() {
     const { token, user } = useAuthStore()
-    if (!token) return <Navigate to="/login" replace />
+    if (!token) return <Navigate to="/home" replace />
+    if (user?.role === "admin") return <Navigate to="/admin" replace />
     if (user?.role === "driver") return <Navigate to="/driver" replace />
     return <Navigate to="/rider" replace />
 }
@@ -34,6 +37,7 @@ export default function App() {
 
             <Routes>
                 <Route path="/" element={<RootRedirect />} />
+                <Route path="/home" element={<Home />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
 
@@ -55,7 +59,16 @@ export default function App() {
                     }
                 />
 
-                <Route path="*" element={<Navigate to="/" replace />} />
+                <Route
+                    path="/admin"
+                    element={
+                        <ProtectedRoute role="admin">
+                            <AdminDashboard />
+                        </ProtectedRoute>
+                    }
+                />
+
+                <Route path="*" element={<Navigate to="/home" replace />} />
             </Routes>
         </BrowserRouter>
     )

@@ -1,93 +1,135 @@
-import { useEffect, useRef } from "react"
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet"
-import L from "leaflet"
+import { useEffect, useState } from "react"
+import {
+    MapContainer,
+    TileLayer,
+    Marker,
+    Popup,
+    Polyline,
+    useMap
+} from "react-leaflet"
+import {
+    fixLeafletIcons,
+    driverIcon,
+    pickupIcon,
+    dropIcon,
+    collectMapPoints,
+    fetchRoutePolyline,
+    DEFAULT_MAP_CENTER,
+    DEFAULT_MAP_ZOOM
+} from "../utils/map"
 import "leaflet/dist/leaflet.css"
 
-// Fix default leaflet marker icon
-delete L.Icon.Default.prototype._getIconUrl
-L.Icon.Default.mergeOptions({
-    iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-    iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-    shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png"
-})
+fixLeafletIcons()
 
-const driverIcon = new L.DivIcon({
-    className: "",
-    html: `<div style="
-        width:40px;height:40px;
-        background:#fbbf24;
-        border-radius:50%;
-        display:flex;align-items:center;justify-content:center;
-        font-size:20px;
-        border:3px solid #fff;
-        box-shadow:0 2px 10px rgba(0,0,0,0.4);
-    ">🚗</div>`,
-    iconSize: [40, 40],
-    iconAnchor: [20, 20]
-})
-
-const pickupIcon = new L.DivIcon({
-    className: "",
-    html: `<div style="
-        width:14px;height:14px;
-        background:#22c55e;
-        border-radius:50%;
-        border:3px solid #fff;
-        box-shadow:0 2px 6px rgba(0,0,0,0.4);
-    "></div>`,
-    iconSize: [14, 14],
-    iconAnchor: [7, 7]
-})
-
-function PanTo({ position }) {
+function MapController({ driverPosition, pickupPosition, dropPosition }) {
     const map = useMap()
-    const prev = useRef(null)
+
     useEffect(() => {
-        if (!position) return
-        const key = `${position[0]},${position[1]}`
-        if (key !== prev.current) {
-            map.panTo(position, { animate: true })
-            prev.current = key
+        setTimeout(() => map.invalidateSize(), 300)
+    }, [map])
+
+    useEffect(() => {
+        const points = collectMapPoints(
+            driverPosition,
+            pickupPosition,
+            dropPosition
+        )
+
+        if (points.length > 1) {
+            map.fitBounds(points, { padding: [80, 80] })
+            return
         }
-    }, [position, map])
+
+        if (points.length === 1) {
+            map.setView(points[0], 14)
+        }
+    }, [driverPosition, pickupPosition, dropPosition, map])
+
     return null
 }
 
-export default function MapView({ driverPosition, pickupPosition, center }) {
-    const defaultCenter = center || [33.6844, 73.0479] // Islamabad
+function RouteLine({ pickupPosition, dropPosition }) {
+    const [route, setRoute] = useState(null)
+
+    useEffect(() => {
+        if (!pickupPosition || !dropPosition) {
+            setRoute(null)
+            return
+        }
+
+        fetchRoutePolyline(pickupPosition, dropPosition).then(setRoute)
+    }, [pickupPosition, dropPosition])
+
+    if (!route) return null
 
     return (
-        <MapContainer
-            center={defaultCenter}
-            zoom={13}
-            style={{ height: "100%", width: "100%" }}
-            zoomControl={false}
-        >
-            <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
+        <Polyline
+            positions={route}
+            pathOptions={{ color: "#facc15", weight: 4, opacity: 0.8 }}
+        />
+    )
+}
 
-            {driverPosition && (
-                <>
-                    <PanTo position={[driverPosition.lat, driverPosition.lng]} />
+export default function MapView({
+    driverPosition,
+    pickupPosition,
+    dropPosition,
+    center
+}) {
+    const mapCenter = center || DEFAULT_MAP_CENTER
+
+    return (
+        <div className="h-full w-full">
+            <MapContainer
+                center={mapCenter}
+                zoom={DEFAULT_MAP_ZOOM}
+                zoomControl={true}
+                scrollWheelZoom={true}
+                style={{ height: "100%", width: "100%" }}
+            >
+                <TileLayer
+                    attribution="&copy; OpenStreetMap contributors"
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
+
+                <MapController
+                    driverPosition={driverPosition}
+                    pickupPosition={pickupPosition}
+                    dropPosition={dropPosition}
+                />
+
+                <RouteLine
+                    pickupPosition={pickupPosition}
+                    dropPosition={dropPosition}
+                />
+
+                {driverPosition && (
                     <Marker
                         position={[driverPosition.lat, driverPosition.lng]}
                         icon={driverIcon}
                     >
-                        <Popup>Driver Location</Popup>
+                        <Popup>Driver Current Location</Popup>
                     </Marker>
-                </>
-            )}
+                )}
 
-            {pickupPosition && (
-                <Marker
-                    position={[pickupPosition.lat, pickupPosition.lng]}
-                    icon={pickupIcon}
-                >
-                    <Popup>Pickup Point</Popup>
-                </Marker>
-            )}
-        </MapContainer>
+                {pickupPosition && (
+                    <Marker
+                        position={[pickupPosition.lat, pickupPosition.lng]}
+                        icon={pickupIcon}
+                    >
+                        <Popup>Pickup Location</Popup>
+                    </Marker>
+                )}
+
+                {dropPosition && (
+                    <Marker
+                        position={[dropPosition.lat, dropPosition.lng]}
+                        icon={dropIcon}
+                    >
+                        <Popup>Destination</Popup>
+                    </Marker>
+                )}
+            </MapContainer>
+        </div>
     )
 }

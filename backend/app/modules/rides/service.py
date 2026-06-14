@@ -1,4 +1,3 @@
-import json
 import asyncio
 
 from app.modules.matching.engine import (
@@ -24,7 +23,9 @@ async def assign_driver_to_ride(
     driver = find_best_driver(
         db,
         ride.pickup_lat,
-        ride.pickup_lng
+        ride.pickup_lng,
+        excluded_drivers=ride.rejected_drivers or [],
+        ride_type=getattr(ride, "ride_type", "standard") or "standard"
     )
 
     if driver:
@@ -49,31 +50,23 @@ async def assign_driver_to_ride(
 
         # SEND EVENT TO DRIVER
         await manager.send_to_driver(
-
             str(driver.id),
-
-            json.dumps({
+            {
                 "type": "new_ride",
                 "ride_id": ride.id,
                 "pickup": ride.pickup_location,
                 "drop": ride.drop_location
-            })
+            }
         )
 
-        # SEND EVENT TO RIDER
         await manager.send_to_rider(
-
             str(ride.rider_id),
-
-            json.dumps({
+            {
                 "type": "driver_assigned",
-
                 "ride_id": ride.id,
-
                 "driver_id": driver.id,
-
                 "eta": eta
-            })
+            }
         )
 
         # START RETRY TIMER

@@ -1,110 +1,48 @@
-from app.modules.matching.geo_search import (
-    get_nearby_drivers
-)
-
-from app.modules.matching.scoring import (
-    calculate_driver_score
-)
-
-from app.utils.distance import (
-    calculate_distance
-)
+from app.modules.matching.geo_search import get_nearby_drivers
+from app.modules.matching.scoring import calculate_driver_score
+from app.utils.distance import calculate_distance
 
 
 def find_best_driver(
     db,
     pickup_lat,
     pickup_lng,
-    excluded_drivers=None
+    excluded_drivers=None,
+    ride_type="standard"
 ):
 
-    drivers = get_nearby_drivers(db)
-
-    print(
-        "AVAILABLE DRIVERS:",
-        drivers
+    drivers = get_nearby_drivers(
+        db,
+        pickup_lat,
+        pickup_lng,
+        ride_type=ride_type
     )
 
     best_driver = None
-
     best_score = -999999
 
     for driver in drivers:
+        if excluded_drivers and str(driver.id) in excluded_drivers:
+            continue
 
-        print(
-            "CHECKING DRIVER:",
-            driver.id
-        )
-
-        # SKIP EXCLUDED DRIVERS
-        if excluded_drivers:
-
-            if str(driver.id) in excluded_drivers:
-
-                print(
-                    "SKIPPING DRIVER"
-                )
-
-                continue
-
-        print(
-            "LAT:",
-            driver.current_lat
-        )
-
-        print(
-            "LNG:",
-            driver.current_lng
-        )
-
-        # SKIP INVALID LOCATIONS
-        if (
-            driver.current_lat is None
-            or driver.current_lng is None
-        ):
-
-            print(
-                "SKIPPED DRIVER"
-            )
-
+        if driver.current_lat is None or driver.current_lng is None:
             continue
 
         distance = calculate_distance(
-
             pickup_lat,
             pickup_lng,
-
             float(driver.current_lat),
             float(driver.current_lng)
         )
 
-        print(
-            "DISTANCE:",
-            distance
-        )
-
         score = calculate_driver_score(
-            distance
-        )
-
-        print(
-            "SCORE:",
-            score
+            distance,
+            vehicle_type=driver.vehicle_type,
+            ride_type=ride_type
         )
 
         if score > best_score:
-
-            print(
-                "NEW BEST DRIVER FOUND"
-            )
-
             best_score = score
-
             best_driver = driver
-
-    print(
-        "FINAL BEST DRIVER:",
-        best_driver
-    )
 
     return best_driver

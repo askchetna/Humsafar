@@ -1,10 +1,66 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import useRideStore from "../store/rideStore"
-import useAuthStore from "../store/authStore"
 import StatusBadge from "./StatusBadge"
 import DriverCard from "./DriverCard"
-import socketService from "../services/socket"
+import api from "../api/axios"
+import { haversineKm, estimateFare, geocodeAddress } from "../utils/map"
+import { RIDE_TYPES } from "../utils/constants"
 import toast from "react-hot-toast"
+
+function CompletedPanel({ currentRide, onDone }) {
+    const [paying, setPaying] = useState(false)
+    const [paid, setPaid] = useState(false)
+
+    const handlePay = async () => {
+        const rideId = currentRide?.ride_id || currentRide?.id
+        if (!rideId) return
+        setPaying(true)
+        try {
+            const createRes = await api.post("/payments/create", {
+                ride_id: rideId,
+                method: "cash"
+            })
+            await api.post(`/payments/complete/${createRes.data.id}`, {})
+            setPaid(true)
+            toast.success("Payment completed!")
+        } catch (err) {
+            toast.error(err.response?.data?.detail || "Payment failed")
+        } finally {
+            setPaying(false)
+        }
+    }
+
+    return (
+        <div className="absolute bottom-0 left-0 right-0 bg-neutral-900 border-t border-neutral-800 p-5 rounded-t-2xl z-[1000] shadow-2xl">
+            <div className="text-center mb-4">
+                <div className="text-4xl mb-2">🎉</div>
+                <h2 className="text-white font-bold text-xl">Trip Completed</h2>
+                {currentRide.fare && (
+                    <p className="text-amber-400 text-2xl font-black mt-1">₨{currentRide.fare}</p>
+                )}
+            </div>
+
+            {!paid ? (
+                <button
+                    onClick={handlePay}
+                    disabled={paying}
+                    className="w-full bg-green-500 hover:bg-green-400 disabled:opacity-50 text-white font-bold py-3.5 rounded-xl transition text-sm mb-2"
+                >
+                    {paying ? "Processing..." : "Pay Now (Cash)"}
+                </button>
+            ) : (
+                <p className="text-green-400 text-sm text-center mb-2">Payment successful ✓</p>
+            )}
+
+            <button
+                onClick={onDone}
+                className="w-full bg-amber-400 hover:bg-amber-300 text-black font-bold py-3.5 rounded-xl transition text-sm"
+            >
+                Done
+            </button>
+        </div>
+    )
+}
 
 const STEPS = ["searching", "assigned", "accepted", "arrived", "started", "completed"]
 
@@ -28,91 +84,115 @@ function RideTimeline({ status }) {
                     <span className={`text-[10px] hidden sm:block ${
                         i <= currentIdx ? "text-amber-400" : "text-neutral-600"
                     }`}>{labels[step]}</span>
-                    {i < STEPS.length - 1 && (
-                        <div className={`absolute left-1/2 top-[5px] w-full h-0.5 ${
-                            i < currentIdx ? "bg-amber-400" : "bg-neutral-700"
-                        }`} style={{ display: "none" }} />
-                    )}
                 </div>
             ))}
         </div>
     )
 }
 
-export default function RidePanel() {
-    const { user } = useAuthStore()
+export default function RidePanel({ currentLocation }) {
     const {
         pickup, destination, setPickup, setDestination,
-        currentRide, eta, requestRide, cancelRide, setRide,
-        setDriverLocation, setEta, clearRide
+        currentRide, eta, requestRide, cancelRide, clearRide
     } = useRideStore()
 
     const [loading, setLoading] = useState(false)
+    const [rideType, setRideType] = useState(RIDE_TYPES.STANDARD)
+    const [estimatedFare, setEstimatedFare] = useState(null)
+    const [estimating, setEstimating] = useState(false)
+    const [packageDescription, setPackageDescription] = useState("")
+
+    const [dropCoords, setDropCoords] = useState(null)
+
+    useEffect(() => {
+        if (!destination.trim() || !currentLocation) {
+            setDropCoords(null)
+            setEstimatedFare(null)
+            return
+        }
+
+        const timer = setTimeout(async () => {
+            setEstimating(true)
+            try {
+                const geo = await geocodeAddress(destination, currentLocation)
+                const drop = geo
+                    ? { lat: geo.lat, lng: geo.lng }
+                    : {
+                        lat: currentLocation.lat + 0.05,
+                        lng: currentLocation.lng + 0.05
+                    }
+                setDropCoords(drop)
+
+                const res = await api.post("/rides/estimate", {
+                    pickup_lat: currentLocation.lat,
+                    pickup_lng: currentLocation.lng,
+                    drop_lat: drop.lat,
+                    drop_lng: drop.lng,
+                    ride_type: rideType
+                })
+                setEstimatedFare(res.data.fare)
+            } catch {
+                const fallback = {
+                    lat: currentLocation.lat + 0.05,
+                    lng: currentLocation.lng + 0.05
+                }
+                setDropCoords(fallback)
+                const dist = haversineKm(
+                    currentLocation.lat,
+                    currentLocation.lng,
+                    fallback.lat,
+                    fallback.lng
+                )
+                setEstimatedFare(estimateFare(dist, rideType))
+            } finally {
+                setEstimating(false)
+            }
+        }, 600)
+
+        return () => clearTimeout(timer)
+    }, [destination, currentLocation, rideType])
 
     const handleRequest = async () => {
         if (!pickup.trim() || !destination.trim()) {
             toast.error("Enter pickup and destination")
             return
         }
+        if (!currentLocation) {
+            toast.error("Waiting for your location...")
+            return
+        }
+        if (rideType === RIDE_TYPES.DELIVERY && !packageDescription.trim()) {
+            toast.error("Describe the package for delivery")
+            return
+        }
+
         setLoading(true)
         try {
+            let drop = dropCoords
+            if (!drop) {
+                const geo = await geocodeAddress(destination, currentLocation)
+                drop = geo
+                    ? { lat: geo.lat, lng: geo.lng }
+                    : {
+                        lat: currentLocation.lat + 0.05,
+                        lng: currentLocation.lng + 0.05
+                    }
+            }
+
             const data = {
                 pickup_location: pickup,
                 drop_location: destination,
-                pickup_lat: 33.6844,
-                pickup_lng: 73.0479,
-                drop_lat: 33.7215,
-                drop_lng: 73.0433
+                pickup_lat: currentLocation.lat,
+                pickup_lng: currentLocation.lng,
+                drop_lat: drop.lat,
+                drop_lng: drop.lng,
+                ride_type: rideType,
+                fare: estimatedFare,
+                package_description: rideType === RIDE_TYPES.DELIVERY ? packageDescription : null
             }
-            const result = await requestRide(data)
+
+            await requestRide(data)
             toast.success("Ride requested!")
-
-            // Connect WebSocket for real-time updates
-            if (user?.user_id) {
-                socketService.connectAsRider(user.user_id)
-
-                socketService.on("driver_assigned", async (d) => {
-                    setEta(d.eta)
-                    toast.success("Driver assigned!")
-                    // Fetch full ride data with driver info
-                    try { await fetchRide(d.ride_id) } catch {}
-                })
-                socketService.on("driver_reassigned", async (d) => {
-                    toast("Driver reassigned")
-                    try { await fetchRide(d.ride_id) } catch {}
-                })
-                socketService.on("driver_location", (d) => {
-                    setDriverLocation(d.lat, d.lng)
-                })
-                socketService.on("ride_accepted", async (d) => {
-                    toast.success("Driver is on the way!")
-                    try { await fetchRide(d.ride_id) } catch {
-                        setRide((prev) => prev ? { ...prev, status: "accepted" } : prev)
-                    }
-                })
-                socketService.on("driver_arrived", (d) => {
-                    setRide((prev) => prev ? { ...prev, status: "arrived" } : prev)
-                    toast.success("Your driver has arrived!")
-                })
-                socketService.on("ride_started", () => {
-                    setRide((prev) => prev ? { ...prev, status: "started" } : prev)
-                    toast("Trip started! Enjoy your ride.")
-                })
-                socketService.on("ride_completed", (d) => {
-                    setRide((prev) => prev ? { ...prev, status: "completed", fare: d.fare } : prev)
-                    toast.success(`Trip completed! Fare: ₨${d.fare}`)
-                    socketService.disconnect()
-                })
-                socketService.on("no_drivers_available", () => {
-                    clearRide()
-                    toast.error("No drivers available. Please try again.")
-                    socketService.disconnect()
-                })
-                socketService.on("ride_cancelled", () => {
-                    clearRide()
-                    socketService.disconnect()
-                })
-            }
         } catch (err) {
             toast.error(err.response?.data?.detail || "Failed to request ride")
         } finally {
@@ -124,17 +204,32 @@ export default function RidePanel() {
         if (!currentRide?.ride_id && !currentRide?.id) return
         try {
             await cancelRide(currentRide.ride_id || currentRide.id)
-            socketService.disconnect()
         } catch {
             toast.error("Could not cancel ride")
         }
     }
 
-    // No active ride — show request form
     if (!currentRide) {
         return (
             <div className="absolute bottom-0 left-0 right-0 bg-neutral-900 border-t border-neutral-800 p-5 rounded-t-2xl z-[1000] shadow-2xl">
                 <h2 className="text-white font-bold text-lg mb-4">Where to?</h2>
+
+                <div className="flex gap-2 mb-3">
+                    {[RIDE_TYPES.STANDARD, RIDE_TYPES.DELIVERY].map((type) => (
+                        <button
+                            key={type}
+                            type="button"
+                            onClick={() => setRideType(type)}
+                            className={`flex-1 py-2 rounded-xl text-xs font-semibold capitalize border transition ${
+                                rideType === type
+                                    ? "bg-amber-400 border-amber-400 text-black"
+                                    : "bg-neutral-800 border-neutral-700 text-neutral-400"
+                            }`}
+                        >
+                            {type === RIDE_TYPES.DELIVERY ? "📦 Delivery" : "🚗 Ride"}
+                        </button>
+                    ))}
+                </div>
 
                 <div className="space-y-3 mb-4">
                     <div className="relative">
@@ -159,9 +254,25 @@ export default function RidePanel() {
                     </div>
                 </div>
 
+                {rideType === RIDE_TYPES.DELIVERY && (
+                    <input
+                        type="text"
+                        placeholder="Package description (e.g. documents, food)"
+                        value={packageDescription}
+                        onChange={(e) => setPackageDescription(e.target.value)}
+                        className="w-full bg-neutral-800 border border-neutral-700 text-white placeholder-neutral-500 rounded-xl py-3 px-4 focus:outline-none focus:border-amber-400 transition text-sm mb-3"
+                    />
+                )}
+
+                {estimatedFare && (
+                    <p className="text-amber-400 text-sm font-semibold mb-3 text-center">
+                        {estimating ? "Calculating fare..." : `Estimated fare: ₨${estimatedFare}`}
+                    </p>
+                )}
+
                 <button
                     onClick={handleRequest}
-                    disabled={loading}
+                    disabled={loading || !currentLocation}
                     className="w-full bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-black font-bold py-3.5 rounded-xl transition text-sm"
                 >
                     {loading ? "Finding Driver..." : "Request Ride"}
@@ -172,28 +283,15 @@ export default function RidePanel() {
 
     const status = currentRide.status || "searching"
 
-    // Completed
     if (status === "completed") {
         return (
-            <div className="absolute bottom-0 left-0 right-0 bg-neutral-900 border-t border-neutral-800 p-5 rounded-t-2xl z-[1000] shadow-2xl">
-                <div className="text-center mb-4">
-                    <div className="text-4xl mb-2">🎉</div>
-                    <h2 className="text-white font-bold text-xl">Trip Completed</h2>
-                    {currentRide.fare && (
-                        <p className="text-amber-400 text-2xl font-black mt-1">₨{currentRide.fare}</p>
-                    )}
-                </div>
-                <button
-                    onClick={() => { clearRide(); socketService.disconnect() }}
-                    className="w-full bg-amber-400 hover:bg-amber-300 text-black font-bold py-3.5 rounded-xl transition text-sm"
-                >
-                    Done
-                </button>
-            </div>
+            <CompletedPanel
+                currentRide={currentRide}
+                onDone={() => clearRide()}
+            />
         )
     }
 
-    // Cancelled
     if (status === "cancelled") {
         return (
             <div className="absolute bottom-0 left-0 right-0 bg-neutral-900 border-t border-neutral-800 p-5 rounded-t-2xl z-[1000] shadow-2xl">
@@ -210,7 +308,6 @@ export default function RidePanel() {
         )
     }
 
-    // Active ride
     return (
         <div className="absolute bottom-0 left-0 right-0 bg-neutral-900 border-t border-neutral-800 p-5 rounded-t-2xl z-[1000] shadow-2xl">
             <div className="flex items-center justify-between mb-3">

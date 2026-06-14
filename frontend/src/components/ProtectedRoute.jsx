@@ -9,7 +9,7 @@ export default function ProtectedRoute({ children, role }) {
     }
 
     if (role && user?.role !== role) {
-        // Redirect to the correct dashboard
+        if (user?.role === "admin") return <Navigate to="/admin" replace />
         if (user?.role === "driver") return <Navigate to="/driver" replace />
         return <Navigate to="/rider" replace />
     }
